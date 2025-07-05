@@ -1,10 +1,12 @@
+name: build-and-deploy
+
 on:
   push:
     branches:
       - main
-    paths:
-      - apps/python-api/**
-      
+    # Optional: only trigger for specific paths; remove if you want all
+    # paths:
+    #   - apps/python-api/**
 
 jobs:
   build-and-deploy:
@@ -26,7 +28,7 @@ jobs:
         run: |
           aws ecr get-login-password | docker login --username AWS --password-stdin 050752638165.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Build, tag, and push image
+      - name: Build, tag, and push Docker image
         run: |
           IMAGE_TAG=v$(date +%s)
           IMAGE_URI=050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api:$IMAGE_TAG
@@ -41,5 +43,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "ci@github.com"
           git add apps/python-api/deployment.yaml
-          git commit -m "CI: Update image tag to latest build"
+          git diff --cached --quiet || git commit -m "CI: Update image tag to latest build"
           git push origin main
