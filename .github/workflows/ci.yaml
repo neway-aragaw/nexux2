@@ -1,42 +1,54 @@
+name: Build and Deploy to ECR
+
 on:
   push:
     paths:
-      - apps/python-api/**
+      - "apps/python-api/**"
+      - ".github/workflows/ci.yaml"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: 050752638165
+      IMAGE_NAME: python-api
+      APP_PATH: apps/python-api
+
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up AWS CLI
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
-        id: login-ecr
         run: |
-          aws ecr get-login-password | docker login --username AWS --password-stdin 050752638165.dkr.ecr.us-east-1.amazonaws.com
+          aws ecr get-login-password | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
-      - name: Build, tag, and push image
+      - name: Build and push Docker image
         run: |
           IMAGE_TAG=v$(date +%s)
-          IMAGE_URI=050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api:$IMAGE_TAG
+          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMAGE_NAME}:${IMAGE_TAG}
 
-          docker build -t $IMAGE_URI ./apps/python-api
+          docker build -t $IMAGE_URI $APP_PATH
           docker push $IMAGE_URI
 
-          sed -i "s|image: .*|image: $IMAGE_URI|g" apps/python-api/deployment.yaml
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+      - name: Update deployment.yaml with new image tag
+        run: |
+          sed -i "s|image: .*|image: $IMAGE_URI|g" $APP_PATH/deployment.yaml
 
       - name: Commit updated deployment.yaml
         run: |
-          git config user.name "github-actions"
-          git config user.email "ci@github.com"
-          git add apps/python-api/deployment.yaml
-          git commit -m "CI: Update image tag to latest build"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add $APP_PATH/deployment.yaml
+          git commit -m "CI: update image to $IMAGE_URI"
           git push origin main
