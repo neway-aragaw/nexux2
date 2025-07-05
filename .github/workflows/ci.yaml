@@ -1,7 +1,10 @@
 on:
   push:
+    branches:
+      - main
     paths:
       - apps/python-api/**
+      
 
 jobs:
   build-and-deploy:
