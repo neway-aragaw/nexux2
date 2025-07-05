@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    # Uncomment to trigger only on changes in this path
-    # paths:
-    #   - apps/python-api/**
 
 jobs:
   build-and-deploy:
@@ -46,5 +43,5 @@ jobs:
           git config user.email "ci@github.com"
           git add apps/python-api/deployment.yaml
           git diff --cached --quiet || git commit -m "CI: Update image tag to latest build"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
+          git remote set-url origin https://${GH_PAT}@github.com/${{ github.repository }}
           git push origin main
