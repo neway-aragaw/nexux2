@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - apps/python-api/**
+    # Optional: only trigger for specific paths; remove if you want all
+    # paths:
+    #   - apps/python-api/**
 
 jobs:
   build-and-deploy:
@@ -23,6 +24,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Log in to Amazon ECR
+        id: login-ecr
         run: |
           aws ecr get-login-password | docker login --username AWS --password-stdin 050752638165.dkr.ecr.us-east-1.amazonaws.com
 
@@ -30,20 +32,16 @@ jobs:
         run: |
           IMAGE_TAG=v$(date +%s)
           IMAGE_URI=050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api:$IMAGE_TAG
-          echo "Using image URI: $IMAGE_URI"
 
           docker build -t $IMAGE_URI ./apps/python-api
           docker push $IMAGE_URI
 
-          sed -i "s|image: .*|image: $IMAGE_URI|g" apps/nginx/deployment.yaml
+          sed -i "s|image: .*|image: $IMAGE_URI|g" apps/python-api/deployment.yaml
 
       - name: Commit updated deployment.yaml
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config user.name "github-actions"
           git config user.email "ci@github.com"
-          git add apps/nginx/deployment.yaml
-          git commit -m "CI: Update image tag to latest build"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
+          git add apps/python-api/deployment.yaml
+          git diff --cached --quiet || git commit -m "CI: Update image tag to latest build"
           git push origin main
