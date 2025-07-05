@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-    # Optional: only trigger for specific paths; remove if you want all
+    # Uncomment to trigger only on changes in this path
     # paths:
     #   - apps/python-api/**
 
@@ -39,9 +39,12 @@ jobs:
           sed -i "s|image: .*|image: $IMAGE_URI|g" apps/python-api/deployment.yaml
 
       - name: Commit updated deployment.yaml
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           git config user.name "github-actions"
           git config user.email "ci@github.com"
           git add apps/python-api/deployment.yaml
           git diff --cached --quiet || git commit -m "CI: Update image tag to latest build"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
           git push origin main
