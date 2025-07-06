@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: python-api
-          image: dummy    # Will be replaced by GitHub Actions
+          image: alpine:3.18  # Will be replaced by GitHub Actions
           ports:
             - containerPort: 5000
