@@ -1,9 +1,12 @@
+# Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
 
+# Copy from base image stage (optional optimization)
+# COPY --from=base /app /app   <-- only if multistage used, otherwise:
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 

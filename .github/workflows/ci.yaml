@@ -1,9 +1,15 @@
-name: build-and-deploy
+name: Build and Deploy Python API
 
 on:
   push:
-    branches:
-      - main
+    paths:
+      - apps/python-api/**
+      - .github/workflows/ci.yaml
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: python-api
+  IMAGE_BASE: 050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api
 
 jobs:
   build-and-deploy:
@@ -13,27 +19,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up AWS CLI
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to Amazon ECR
+      - name: Login to Amazon ECR
         id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Generate image tag
+        id: tag
+        run: echo "IMAGE_TAG=v$(date +%s)" >> $GITHUB_ENV
+
+      - name: Build and push Docker image with tag and latest
         run: |
-          aws ecr get-login-password | docker login --username AWS --password-stdin 050752638165.dkr.ecr.us-east-1.amazonaws.com
+          docker build -t $IMAGE_BASE:$IMAGE_TAG -t $IMAGE_BASE:latest ./apps/python-api
+          docker push $IMAGE_BASE:$IMAGE_TAG
+          docker push $IMAGE_BASE:latest
 
-      - name: Build, tag, and push Docker image
+      - name: Update image tag in deployment.yaml
         run: |
-          IMAGE_TAG=v$(date +%s)
-          IMAGE_URI=050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api:$IMAGE_TAG
-
-          docker build -t $IMAGE_URI ./apps/python-api
-          docker push $IMAGE_URI
-
-          sed -i "s|image: .*|image: $IMAGE_URI|g" apps/python-api/deployment.yaml
+          sed -i "s|image: .*|image: $IMAGE_BASE:$IMAGE_TAG|" apps/python-api/deployment.yaml
 
       # - name: Commit updated deployment.yaml
       #   env:
@@ -42,6 +51,6 @@ jobs:
       #     git config user.name "github-actions"
       #     git config user.email "ci@github.com"
       #     git add apps/python-api/deployment.yaml
-      #     git diff --cached --quiet || git commit -m "CI: Update image tag to latest build"
+      #     git diff --cached --quiet || git commit -m "CI: Update image tag to $IMAGE_TAG"
       #     git remote set-url origin https://${GH_PAT}@github.com/${{ github.repository }}
       #     git push origin main

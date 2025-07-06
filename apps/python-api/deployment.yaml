@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: python-api
-          image: alpine:3.18  # Will be replaced by GitHub Actions
+          image: 050752638165.dkr.ecr.us-east-1.amazonaws.com/python-api:latest  # Will be replaced by GitHub Actions
           ports:
             - containerPort: 5000
